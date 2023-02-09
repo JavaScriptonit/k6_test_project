@@ -1,6 +1,6 @@
 import http from 'k6/http';
 import { sleep, check } from 'k6';
-import { getDictionariesQueries } from './fixtures/queries/index.js';
+import { getDictionariesQueries } from '../fixtures/queries/index.js';
 const BASE_URL = 'https://joinbet01.com';
 const dictionariesQueriesValues = Object.keys(getDictionariesQueries);
 
