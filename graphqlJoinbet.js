@@ -1,10 +1,11 @@
-import http from "k6/http";
-import { sleep, check } from "k6";
+import http from 'k6/http';
+import { sleep, check } from 'k6';
+import { getDictionariesQueries } from './fixtures/queries/index.js';
 const BASE_URL = 'https://joinbet01.com';
+const dictionariesQueriesValues = Object.keys(getDictionariesQueries);
 
-export default function() {
-
-    let query = `
+export default function () {
+  let query = `
         query getDictionaries {
           currencies {
             __typename
@@ -88,25 +89,25 @@ export default function() {
           }
         }`;
 
-    let headers = {
-        "locale": "ru",
-        "Content-Type": "application/json"
-    };
+  let headers = {
+    locale: 'ru',
+    'Content-Type': 'application/json',
+  };
 
-    let res = http.post(BASE_URL + "/graphql",
-        JSON.stringify({ query: query }),
-        {headers: headers}
-    );
+  let res = http.post(BASE_URL + '/graphql', JSON.stringify({ query: query }), {
+    headers: headers,
+  });
+  let result = [];
+  const body = res.body;
+  dictionariesQueriesValues.forEach((value) => {
+    result.push(body.includes(value));
+  });
+  let checker = (arr) => arr.every((v) => v === true);
 
-    check(res, {
-        'status was 200': (r) => r.status === 200,
-    });
+  check(res, {
+    'status was 200': (r) => r.status === 200,
+    'query values verification': () => checker(result),
+  });
 
-    if (res.status === 200) {
-        console.log(JSON.stringify(res.body));
-        let body = JSON.parse(res.body);
-        // let issue = body.data.repository.issues.edges[0].node;
-        // console.log(issue.id, issue.number, issue.title);
-    }
-    sleep(0.3);
+  sleep(0.3);
 }
