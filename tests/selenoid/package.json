@@ -1,7 +1,0 @@
-{
-  "name": "selenoid",
-  "version": "1.0.0",
-  "dependencies": {
-    "selenium-webdriver": "^4.8.2"
-  }
-}

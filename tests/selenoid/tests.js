@@ -1,84 +1,84 @@
-// Загрузим WebDriver, с помощью которого будем управлять Selenoid
-const { Builder, By, Key, until } = require('selenium-webdriver');
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+// import { parseHTML } from 'k6/html';
 
-let driver;
+// export let options = {
+//     vus: 10,
+//     duration: '10s',
+// };
 
-// Тест #1: Проверим, что Selenoid запущен и доступен по порту 4444
-async function testSelenoidRunning() {
-    driver = await new Builder().forBrowser('chrome').usingServer('http://localhost:4444/wd/hub').build();
-    await driver.get('http://localhost:4444/status');
-    const statusText = await driver.findElement(By.css('pre')).getText();
-    if (statusText.indexOf('browser') !== -1) {
-        console.log('Selenoid запущен');
-    } else {
-        console.error('Selenoid не запущен');
-    }
-}
-
-// Тест #2: Проверим, что Selenoid UI доступен по порту 8090
-async function testSelenoidUI() {
-    await driver.get('http://localhost:8090/#/');
-    const pageTitle = await driver.getTitle();
-    if (pageTitle === 'Selenoid UI') {
-        console.log('Selenoid UI доступен');
-    } else {
-        console.error('Selenoid UI не доступен');
-    }
-}
-
-// Тест #3: Проверим, что доступны драйверы для Chrome и Firefox
-async function testBrowsersAvailable() {
-    await driver.get('http://localhost:4444/status');
-    const statusText = await driver.findElement(By.css('pre')).getText();
-    if (statusText.indexOf('"firefox":') !== -1 && statusText.indexOf('"chrome":') !== -1) {
-        console.log('Драйверы для Chrome и Firefox доступны');
-    } else {
-        console.error('Драйверы для Chrome и Firefox не доступны');
-    }
-}
-
-// Тест #4: Проверим, что можно запустить простой тест на Chrome
-async function testSimpleChrome() {
-    await driver.get('https://www.google.com');
-    const searchBox = await driver.findElement(By.name('q'));
-    await searchBox.sendKeys('Selenoid test', Key.RETURN);
-    await driver.wait(until.titleContains('Selenoid test'), 1000);
-    const pageTitle = await driver.getTitle();
-    if (pageTitle === 'Selenoid test - Поиск в Google') {
-        console.log('Простой тест на Chrome выполнен успешно');
-    } else {
-        console.error('Ошибка выполнения простого теста на Chrome');
-    }
-}
-
-// Тест #5: Проверим, что можно запустить простой тест на Firefox
-async function testSimpleFirefox() {
-    const firefoxOptions = {
-        browserName: 'firefox',
-        'moz:firefoxOptions': {
-            args: ['-headless'],
-        },
-    };
-    driver = await new Builder().usingServer('http://localhost:4444/wd/hub').withCapabilities(firefoxOptions).build();
-    await driver.get('https://www.google.com');
-    const searchBox = await driver.findElement(By.name('q'));
-    await searchBox.sendKeys('Selenoid test', Key.RETURN);
-    await driver.wait(until.titleContains('Selenoid test'), 1000);
-    const pageTitle = await driver.getTitle();
-    if (pageTitle === 'Selenoid test - Поиск в Google') {
-        console.log('Простой тест на Firefox выполнен успешно');
-    } else {
-        console.error('Ошибка выполнения простого теста на Firefox');
-    }
-}
-
-// Запустим все тесты по очереди
-testSelenoidRunning().then(() => {
-    testSelenoidUI().then(() => {
-        testBrowsersAvailable().then(() => {
-            testSimpleChrome().then(() => {
-                testSimpleFirefox().then(() => driver.quit());
-            });
-        });
+export default function() {
+    let response = http.get('http://localhost:4444/status');
+    // console.log(response);
+    check(response, {
+        'Selenoid - status. is status 200': (r) => r.status === 200
     });
-});
+    sleep(1);
+
+    response = http.get('http://localhost:4444/status/logs');
+    // console.log(response);
+    check(response, {
+        'Selenoid - logs. is status 200': (r) => r.status === 200
+    });
+    sleep(1);
+
+    response = http.get('http://localhost:4444/status/video');
+    // console.log(response);
+    check(response, {
+        'Selenoid - video. is status 200': (r) => r.status === 200
+    });
+    sleep(1);
+
+    response = http.post('http://localhost:4444/session',
+        `{
+    "desiredCapabilities": {
+      "browserName": "chrome",
+      "version": "latest",
+      "platform": "WINDOWS"
+    }
+  }`,
+        { headers: { 'Content-Type': 'application/json' }});
+    // console.log(response);
+    check(response, {
+        'Selenoid - session. is status 200': (r) => r.status === 200
+    });
+    sleep(1);
+
+    // const session = JSON.parse(response.body).value;
+    // console.log(session);
+    // const sessionId = session.split('/').reverse()[0];
+    // console.log(sessionId);
+    //
+    // response = http.delete(`http://localhost:4444/session/${sessionId}`);
+    // check(response, {
+    //     'sessionId. is status 200': (r) => r.status === 200
+    // });
+    // sleep(1);
+
+    // const bodyText = 'Sessions';
+    response = http.get('http://localhost:8080/');
+    // console.log(response);
+    check(response, {
+        'Selenoid-ui - stats. is status 200': (r) => r.status === 200,
+        // 'Selenoid-ui - stats. text verification': (r) => r.body.includes(bodyText),
+    });
+    sleep(1);
+
+    // const capabilitiesBodyText = 'capabilities';
+    response = http.get('http://localhost:8080/#/capabilities/');
+    // console.log(response);
+    check(response, {
+        'Selenoid-ui - capabilities. is status 200': (r) => r.status === 200,
+        // 'Selenoid-ui - capabilities. text verification': (r) => r.body.includes(capabilitiesBodyText),
+    });
+    sleep(1);
+
+    // const videosBodyText = 'browsers';
+    response = http.get('http://localhost:8080/#/videos');
+    // console.log(response);
+    check(response, {
+        'Selenoid-ui - videos. is status 200': (r) => r.status === 200,
+        // 'Selenoid-ui - videos. text verification': (r) => r.find('[title="browsers.json"]').text() === videosBodyText,
+    });
+    sleep(1);
+}
